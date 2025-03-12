@@ -38,9 +38,7 @@ jobs:
         uses: hermanka/action-full-scan@master
         with:
           target: ${{ env.URL }}
-          network_name: isolated
-          ZAP_AUTH_HEADER: PHPSESSID
-          ZAP_AUTH_HEADER_VALUE: $(cat $GITHUB_WORKSPACE/session_file)          
+          network_name: isolated         
 
       - name: stop docker
         run: docker stop docker-apache
