@@ -13,14 +13,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Create isolated network
-        run: docker network create --driver bridge isolated
+        run: docker network create --driver bridge isolated      
 
       - name: Build AUT
         run: docker build -t my-php-site:latest .
 
-      - name: Run AUT using docker-compose
-        run: docker compose up -d
-
+      - name: Run AUT and Selenium using docker-compose
+        run: | 
+          docker-compose -f docker-compose.app.yaml up -d 
+          docker-compose -f docker-compose.selenium.yaml up --scale firefox=5 -d 
+      
       - name: Get AUT URL
         run: |
           URL=http://$(ip -f inet -o addr show docker0 | awk '{print $4}' | cut -d '/' -f 1)
@@ -29,29 +31,18 @@ jobs:
       - name: Check AUT URL
         run: curl ${{ env.URL }}
 
-      - name: Selenium Preparation
-        run: docker run --network=isolated -d -p 4444:4444 -p 7900:7900 -v /dev/shm:/dev/shm --name firefox-standalone selenium/standalone-firefox:latest
-
       - name: Wait for Selenium Hub
-        run: |
-          echo "Waiting for Selenium Hub to start..."
-          while ! curl -s http://localhost:4444/wd/hub/status > /dev/null; do
-            sleep 1
-          done
-          echo "Selenium Hub is ready!"
+        run: sh wait.sh
 
       - name: Check the Hub
         run: curl http://localhost:4444/ui
 
       - name: Install Selenium client
-        run: pip install -U selenium pytest pytest-xdist webdriver-manager
-      
+        run: pip install -U selenium pytest pytest-xdist
 
       - name: Run tests using pytest
         run: |
-          python  tests/testcase.py
+          python tests/testcase.py
 
-      - name: Stop docker
-        run: |
-          docker stop $(docker ps -q)
-          docker rm $(docker ps -a -q)
+      - name: stop docker
+        run: docker stop docker-apache
