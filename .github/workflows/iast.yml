@@ -1,8 +1,6 @@
 name: Security Scans
 
 on:
- name: IAST
-on:
   push:
     branches:
       - main
