@@ -35,7 +35,7 @@ jobs:
       run: |
         sudo mysql --user=root --execute="CREATE DATABASE IF NOT EXISTS quiz_pengupil;"
         sudo mysql --user=root quiz_pengupil < db/badcrud.sql
-        sudo mysql --user=root --execute="GRANT ALL PRIVILEGES ON quiz_pengupil.* TO 'root'@'localhost' IDENTIFIED BY '';"
+        sudo mysql --user=root --execute="GRANT ALL PRIVILEGES ON quiz_pengupil.* TO 'root'@'localhost' IDENTIFIED BY 'root123';"
         sudo mysql --user=root --execute="FLUSH PRIVILEGES;"
 
     - name: Verify Database Setup
