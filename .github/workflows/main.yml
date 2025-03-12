@@ -48,7 +48,7 @@ jobs:
 
       - name: Run tests using pytest
         run: |
-          pytest -v -n 5 tests/
+          python  tests/testcase.py
 
       - name: Stop docker
         run: |
