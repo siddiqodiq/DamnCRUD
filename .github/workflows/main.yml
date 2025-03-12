@@ -44,7 +44,8 @@ jobs:
         run: curl http://localhost:4444/ui
 
       - name: Install Selenium client
-        run: pip install -U selenium pytest pytest-xdist
+        run: pip install -U selenium pytest pytest-xdist webdriver-manager
+      
 
       - name: Run tests using pytest
         run: |
