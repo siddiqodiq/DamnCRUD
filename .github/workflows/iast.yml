@@ -1,10 +1,11 @@
 name: Security Scans
 
 on:
+ name: IAST
+on:
   push:
     branches:
       - main
-
 jobs:
   dast:
     name: DAST
@@ -13,31 +14,55 @@ jobs:
     steps:
       - name: Checkout the repo
         uses: actions/checkout@v4
+      
+      - name: Install Docker Compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
 
       - name: Create isolated network
-        run: docker network create --driver bridge isolated
+        run: docker network create --driver bridge isolated      
 
-      - name: Deploy AUT
+      - name: Build AUT
         run: docker build -t my-php-site:latest .
 
-      - name: Run AUT
-        run: docker run --network=isolated -p 80:80 --name docker-apache -t -d my-php-site:latest
+      - name: Run AUT using docker-compose
+        run: docker-compose -f docker-compose.app.yaml up -d 
 
       - name: Get AUT URL
         run: |
           URL=http://$(ip -f inet -o addr show docker0 | awk '{print $4}' | cut -d '/' -f 1)
           echo "URL=$URL" >> $GITHUB_ENV
-
+  
       - name: Check AUT URL
         run: curl ${{ env.URL }}
 
-      - name: zap-scan
+      - name: Selenium Preparation
+        run: docker run --network=isolated -d -p 4444:4444 -p 7900:7900 -v /dev/shm:/dev/shm --name firefox-standalone selenium/standalone-firefox:latest
+
+      - name: Wait for Selenium Hub
+        run: sh wait.sh
+
+      - name: Check the Hub
+        run: curl http://localhost:4444/ui
+
+      - name: Install Selenium client
+        run: pip install -U selenium
+
+      - name: Fetch active session
+        run: python session_fetch.py
+
+      - name: ZAP Scan
         uses: hermanka/action-full-scan@master
         with:
           target: ${{ env.URL }}
-          network_name: zap-isolated
+          network_name: isolated
+          ZAP_AUTH_HEADER: PHPSESSID
+          ZAP_AUTH_HEADER_VALUE: $(cat $GITHUB_WORKSPACE/session_file)
+          cmd_options: -z "-config api.addrs.addr.url=https://$GITHUB_WORKSPACE/session_file -config ZAP_AUTH_HEADER=PHPSESSID -config ZAP_AUTH_HEADER_VALUE=$(cat $GITHUB_WORKSPACE/session_file)"
 
-      - name: Stop Docker
+      - name: stop docker
         run: docker stop docker-apache
 
   sast-sonarcloud:
