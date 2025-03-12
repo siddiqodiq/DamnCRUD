@@ -36,7 +36,7 @@ jobs:
       - name: Check AUT URL
         run: curl ${{ env.URL }}
 
-      - name: ZAP Scan
+      - name: zap-scan
         uses: hermanka/action-full-scan@master
         with:
           target: ${{ env.URL }}
