@@ -11,12 +11,15 @@ from webdriver_manager.chrome import ChromeDriverManager
 class TestContactManagement(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.url = "http://loclahost"  # Sesuaikan dengan URL yang digunakan dalam CI/CD
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
         cls.browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        try:
+            cls.url = os.environ['URL']
+        except:
+            cls.url = "http://localhost"#sesuaikan dengan url yang diinginkan 
 
     def login(self):
         self.browser.get(f"{self.url}/login.php")
