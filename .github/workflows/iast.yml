@@ -1,86 +1,58 @@
-name: IAST
+name: Security Scans
+
 on:
   push:
     branches:
       - main
+
 jobs:
   dast:
     name: DAST
     permissions: write-all
     runs-on: ubuntu-latest
     steps:
-        - name: Checkout repository
-          uses: actions/checkout@v4
+      - name: Checkout the repo
+        uses: actions/checkout@v4
 
-        - name: Create a temporary index.php
-          run: |
-            echo "<?php echo 'Server is running!'; ?>" > index.php
+      - name: Create isolated network
+        run: docker network create --driver bridge isolated
 
-        - name: Install dependencies
-          run: |
-            sudo apt update
-            sudo apt install -y php php-cli php-mysql unzip google-chrome-stable mariadb-server mariadb-client curl
+      - name: Deploy AUT
+        run: docker build -t my-php-site:latest .
 
-        - name: Start MariaDB Service
-          run: |
-            sudo systemctl start mariadb
-            sudo systemctl enable mariadb
-            sudo systemctl restart mariadb
+      - name: Run AUT
+        run: docker run --network=isolated -p 80:80 --name docker-apache -t -d my-php-site:latest
 
-        - name: Setup Database
-          run: |
-            sudo mysql --user=root --execute="CREATE DATABASE IF NOT EXISTS badcrud;"
-            sudo mysql --user=root badcrud < db/damncrud.sql
-            sudo mysql --user=root --execute="GRANT ALL PRIVILEGES ON badcrud.* TO 'root'@'localhost' IDENTIFIED BY '';"
-            sudo mysql --user=root --execute="FLUSH PRIVILEGES;"
+      - name: Get AUT URL
+        run: |
+          URL=http://$(ip -f inet -o addr show docker0 | awk '{print $4}' | cut -d '/' -f 1)
+          echo "URL=$URL" >> $GITHUB_ENV
 
-        - name: Verify Database Setup
-          run: |
-            sudo mysql -u root -e "USE badcrud; SHOW TABLES;"
+      - name: Check AUT URL
+        run: curl ${{ env.URL }}
 
-        - name: Start PHP server
-          run: |
-            nohup php -S 127.0.0.1:8000 -t . > server.log 2>&1 &
-            sleep 5
-            echo "hecking server log:"
-            cat server.log
+      - name: zap-scan
+        uses: hermanka/action-full-scan@master
+        with:
+          target: ${{ env.URL }}
+          network_name: zap-isolated
 
-        - name: Wait for server to start
-          run: |
-            for i in {1..10}; do
-              curl -s http://127.0.0.1:8000/ && echo "Server is up!" && exit 0
-              echo "Waiting for server..."
-              sleep 2
-            done
-            echo "Server failed to start!"
-            exit 1
+      - name: Stop Docker
+        run: docker stop docker-apache
 
-        - name: ZAP Scan
-          uses: hermanka/action-full-scan@master
-          with:
-            target: http://127.0.0.1:8000
-            network_name: isolated
-            ZAP_AUTH_HEADER: PHPSESSID
-            ZAP_AUTH_HEADER_VALUE: $(cat $GITHUB_WORKSPACE/session_file)
-            cmd_options: -z "-config api.addrs.addr.url=https://$GITHUB_WORKSPACE/session_file -config ZAP_AUTH_HEADER=PHPSESSID -config ZAP_AUTH_HEADER_VALUE=$(cat $GITHUB_WORKSPACE/session_file)"
-
-        - name: stop docker
-          run: docker stop docker-apache
-
-  
   sast-sonarcloud:
-      name: SAST - SonarCloud
-      permissions: write-all
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v4
+    name: SAST - SonarCloud
+    permissions: write-all
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-        - name: Set up SonarCloud Scanner
-          uses: SonarSource/sonarcloud-github-action@master
-          env:
-            SONAR_TOKEN: 416e9c6be94d8bd90b8e878e8cfe609dbcb3d265
-          with:
-            args: >
-              -Dsonar.organization=siddiqodiq
-              -Dsonar.projectKey=siddiqodiq_DamnCRUD
+      - name: Set up SonarCloud Scanner
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          SONAR_TOKEN: 416e9c6be94d8bd90b8e878e8cfe609dbcb3d265
+        with:
+          args: >
+            -Dsonar.organization=siddiqodiq
+            -Dsonar.projectKey=siddiqodiq_DamnCRUD
