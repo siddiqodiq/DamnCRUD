@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  login-register-test:
+  lima-testcase:
     runs-on: ubuntu-latest
 
     steps:
@@ -68,3 +68,20 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install selenium webdriver-manager pytest chromedriver-autoinstaller
+
+    - name: Run Selenium Tests
+      run: python tests/testcase.py
+
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: selenium-test-results
+        path: test-results/
+
+    - name: Upload Test Logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: selenium-test-logs
+        path: test-results/test_log.txt
