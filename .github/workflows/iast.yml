@@ -30,8 +30,8 @@ jobs:
 
       - name: Get AUT URL
         run: |
-          URL=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' my-php-site)
-          echo "URL=http://$URL" >> $GITHUB_ENV
+          URL=http://$(ip -f inet -o addr show docker0 | awk '{print $4}' | cut -d '/' -f 1)
+          echo "URL=$URL" >> $GITHUB_ENV
   
       - name: Check AUT URL
         run: curl ${{ env.URL }}
