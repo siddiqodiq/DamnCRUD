@@ -1,73 +1,57 @@
-name: Selenium Tests
-
+name: OTF Testing
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
-
 jobs:
-  lima-testcase:
+  test:
+    name: Functional Test
+    permissions: write-all
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout the repo
+        uses: actions/checkout@v4
 
-    - name: Create a temporary index.php
-      run: |
-        echo "<?php echo 'Server is running!'; ?>" > index.php
+      - name: Create isolated network
+        run: docker network create --driver bridge isolated
 
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y php php-cli php-mysql unzip google-chrome-stable mariadb-server mariadb-client curl
+      - name: Build AUT
+        run: docker build -t my-php-site:latest .
 
-    - name: Start MariaDB Service
-      run: |
-        sudo systemctl start mariadb
-        sudo systemctl enable mariadb
-        sudo systemctl restart mariadb
+      - name: Run AUT using docker-compose
+        run: docker compose up -d
 
-    - name: Setup Database
-      run: |
-        sudo mysql --user=root --execute="CREATE DATABASE IF NOT EXISTS badcrud;"
-        sudo mysql --user=root badcrud < db/damncrud.sql
-        sudo mysql --user=root --execute="GRANT ALL PRIVILEGES ON badcrud.* TO 'root'@'localhost' IDENTIFIED BY '';"
-        sudo mysql --user=root --execute="FLUSH PRIVILEGES;"
+      - name: Get AUT URL
+        run: |
+          URL=http://$(ip -f inet -o addr show docker0 | awk '{print $4}' | cut -d '/' -f 1)
+          echo "URL=$URL" >> $GITHUB_ENV
 
-    - name: Verify Database Setup
-      run: |
-        sudo mysql -u root -e "USE badcrud; SHOW TABLES;"
+      - name: Check AUT URL
+        run: curl ${{ env.URL }}
 
-    - name: Start PHP server
-      run: |
-        nohup php -S 127.0.0.1:8000 -t . > server.log 2>&1 &
-        sleep 5
-        echo "hecking server log:"
-        cat server.log
+      - name: Selenium Preparation
+        run: docker run --network=isolated -d -p 4444:4444 -p 7900:7900 -v /dev/shm:/dev/shm --name firefox-standalone selenium/standalone-firefox:latest
 
-    - name: Wait for server to start
-      run: |
-        for i in {1..10}; do
-          curl -s http://127.0.0.1:8000/ && echo "Server is up!" && exit 0
-          echo "Waiting for server..."
-          sleep 2
-        done
-        echo "Server failed to start!"
-        exit 1
+      - name: Wait for Selenium Hub
+        run: |
+          echo "Waiting for Selenium Hub to start..."
+          while ! curl -s http://localhost:4444/wd/hub/status > /dev/null; do
+            sleep 1
+          done
+          echo "Selenium Hub is ready!"
 
-    - name: Set Up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
+      - name: Check the Hub
+        run: curl http://localhost:4444/ui
 
-    - name: Install Python Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install selenium webdriver-manager pytest chromedriver-autoinstaller
+      - name: Install Selenium client
+        run: pip install -U selenium pytest pytest-xdist webdriver-manager
+      
 
-    - name: Run Selenium Tests
-      run: python tests/testcase.py
+      - name: Run tests using pytest
+        run: |
+          python  tests/testcase.py
+
+      - name: Stop docker
+        run: |
+          docker stop $(docker ps -q)
+          docker rm $(docker ps -a -q)
