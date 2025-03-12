@@ -1,10 +1,14 @@
 version: "3.8"
+networks:
+  isolated:
 services:
   docker-apache:
     image: my-php-site:latest
     container_name: docker-apache
     ports:
       - "80:80"
+    networks:
+      - isolated
 
   mysql:
     image: mysql:latest
@@ -16,3 +20,5 @@ services:
       - "3306:3306"
     volumes:
       - ./db/damncrud.sql:/docker-entrypoint-initdb.d/damncrud.sql:ro
+    networks:
+      - isolated
