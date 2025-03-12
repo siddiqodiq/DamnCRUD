@@ -20,6 +20,7 @@ class TestContactManagement(unittest.TestCase):
 
     def login(self):
         self.browser.get(f"{self.url}/login.php")
+        time.sleep(4)
         self.browser.find_element(By.ID, "inputUsername").send_keys("admin")
         self.browser.find_element(By.ID, "inputPassword").send_keys("nimda666!")
         self.browser.find_element(By.XPATH, "//button[@type='submit']").click()
@@ -32,7 +33,7 @@ class TestContactManagement(unittest.TestCase):
     def test_1_add_new_contact(self):
         self.login()
         self.browser.get(f"{self.url}/create.php")
-        time.sleep(2)
+        time.sleep(4)
         self.browser.find_element(By.ID, 'name').send_keys("John Doe")
         self.browser.find_element(By.ID, 'email').send_keys("john.doe@example.com")
         self.browser.find_element(By.ID, 'phone').send_keys("123456789")
@@ -44,7 +45,7 @@ class TestContactManagement(unittest.TestCase):
 
     def test_2_delete_contact(self):
         self.login()
-        time.sleep(2)
+        time.sleep(4)
         actions_section = self.browser.find_element(By.XPATH, "//tr[@role='row'][1]//td[contains(@class, 'actions')]")
         delete_button = actions_section.find_element(By.XPATH, ".//a[contains(@class, 'btn-danger')]")
         delete_button.click()
@@ -55,14 +56,14 @@ class TestContactManagement(unittest.TestCase):
     def test_3_sign_out(self):
         self.login()
         self.browser.get(f"{self.url}/profil.php")
-        time.sleep(2)
+        time.sleep(4)
         self.browser.find_element(By.XPATH, '/html/body/div[1]/div[1]/div/div/a[3]').click()
         self.wait_for_url(f"{self.url}/login.php")
         assert self.browser.current_url == f"{self.url}/login.php"
 
     def test_4_update_contact(self):
         self.login()
-        time.sleep(2)
+        time.sleep(4)
         actions_section = self.browser.find_element(By.XPATH, "//tr[@role='row'][1]//td[contains(@class, 'actions')]")
         update_button = actions_section.find_element(By.XPATH, ".//a[contains(@class, 'btn-success')]")
         update_button.click()
@@ -81,7 +82,7 @@ class TestContactManagement(unittest.TestCase):
     def test_5_test_xss_security(self):
         self.login()
         self.browser.get(f"{self.url}/vpage.php")
-        time.sleep(2)
+        time.sleep(4)
         self.browser.find_element(By.NAME, 'thing').send_keys("<script>alert(1)</script>")
         self.browser.find_element(By.NAME, 'submit').click()
         
