@@ -19,7 +19,7 @@ jobs:
         run: docker build -t my-php-site:latest .
 
       - name: Run AUT using docker-compose
-        run: docker-compose up -d
+        run: docker compose up -d
 
       - name: Get AUT URL
         run: |
@@ -33,7 +33,12 @@ jobs:
         run: docker run --network=isolated -d -p 4444:4444 -p 7900:7900 -v /dev/shm:/dev/shm --name firefox-standalone selenium/standalone-firefox:latest
 
       - name: Wait for Selenium Hub
-        run: sh wait.sh
+        run: |
+          echo "Waiting for Selenium Hub to start..."
+          while ! curl -s http://localhost:4444/wd/hub/status > /dev/null; do
+            sleep 1
+          done
+          echo "Selenium Hub is ready!"
 
       - name: Check the Hub
         run: curl http://localhost:4444/ui
@@ -45,5 +50,7 @@ jobs:
         run: |
           pytest -v -n 5 tests/
 
-      - name: stop docker
-        run: docker stop docker-apache
+      - name: Stop docker
+        run: |
+          docker stop $(docker ps -q)
+          docker rm $(docker ps -a -q)
