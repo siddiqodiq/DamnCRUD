@@ -48,15 +48,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+
+      - name: Install dependencies
+        run: |
+          composer install --no-progress --no-suggest
+          vendor/bin/psalm --init .
+
       - name: Psalm Security Scan
         uses: docker://ghcr.io/psalm/psalm-security-scan
-        with:
-          relative-dir: .
+    
 
       - name: Import Security Analysis results into GitHub Security Code Scanning
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: results.sarif
+
 
   sast-sonarcloud:
     name: SAST - SonarCloud
