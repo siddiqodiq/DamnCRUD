@@ -11,7 +11,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 class TestContactManagement(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.url = "http://172.17.0.1"  # Sesuaikan dengan URL yang digunakan dalam CI/CD
+        cls.url = "http://127.0.0.1:8000"  # Sesuaikan dengan URL yang digunakan dalam CI/CD
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
         options.add_argument('--no-sandbox')
